@@ -293,7 +293,9 @@
           var result = {
             pass: imagediff.equal(actual, expected, tolerance)
           };
-          if (!result.pass && typeof (document) !== UNDEFINED) {
+          var isHeadless = /HeadlessChrome/.test(window.navigator.userAgent);
+          var isBrowser = !(isHeadless || typeof (document) === UNDEFINED);
+          if (!result.pass && isBrowser) {
             result.message = function() {
               var
                 div     = get('div'),
@@ -326,7 +328,8 @@
               return div;
             };
            } else {
-            result.message = result.pass ? 'Expected not to be equal' : 'No DOM detected.';
+            result.message = result.pass ? 'Expected not to be equal' :
+                isHeadless ? 'Expected to be equal' : 'No DOM detected.';
           }
           return result;
         }
