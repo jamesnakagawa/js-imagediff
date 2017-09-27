@@ -17,10 +17,11 @@
   ],
   "author": "Carl Sutherland <carl@humblesoftware.com> (http://www.humblesoftware.com/)",
   "contributors": [
-    "Jordan Santell <@jsantell>"
+    "Jordan Santell <@jsantell>",
+    "James Nakagawa <@jamesnakagawa>"
   ],
   "optionalDependencies": {
-    "canvas": "~1.2.7"
+    "canvas": "~1.6.7"
   },
   "devDependencies": {
     "jasmine-node": ">=1.0.20",
