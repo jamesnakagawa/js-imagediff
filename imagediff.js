@@ -7,17 +7,13 @@
 (function (name, definition) {
   var root = this;
   if (typeof module !== 'undefined') {
+    var Canvas;
     try {
-      var Canvas = require('canvas');
-    } catch (e) {
-      throw new Error(
-        e.message + '\n' +
-        'Please see https://github.com/HumbleSoftware/js-imagediff#cannot-find-module-canvas\n'
-      );
-    }
+      Canvas = require('canvas');
+    } catch (e) {}
     module.exports = definition(root, name, Canvas);
   } else if (typeof define === 'function' && typeof define.amd === 'object') {
-    define(definition);
+    define(definition(root, name));
   } else {
     root[name] = definition(root, name);
   }
@@ -39,10 +35,17 @@
 
   // Creation
   function getCanvas (width, height) {
-    var
-      canvas = Canvas ?
-        new Canvas() :
-        document.createElement('canvas');
+    var canvas;
+    if (Canvas) {
+      canvas = new Canvas();
+    } else if (root.document && root.document.createElement) {
+      canvas = document.createElement('canvas');
+    } else {
+        throw new Error(
+          e.message + '\n' +
+          'Please see https://github.com/HumbleSoftware/js-imagediff#cannot-find-module-canvas\n'
+        );
+    }
     if (width) canvas.width = width;
     if (height) canvas.height = height;
     return canvas;
@@ -52,10 +55,6 @@
     canvas.height = height;
     context.clearRect(0, 0, width, height);
     return context.createImageData(width, height);
-  }
-  // expost canvas module
-  function getCanvasRef() {
-    return Canvas;
   }
 
 
@@ -286,51 +285,58 @@
   }
 
   jasmine = {
-
-    toBeImageData : function () {
-      return imagediff.isImageData(this.actual);
+    toBeImageData : function (util, customEqualityTesters) {
+      return {
+        compare: function (actual) {
+          return imagediff.isImageData(actual);
+        }
+      };
     },
 
-    toImageDiffEqual : function (expected, tolerance) {
+    toImageDiffEqual : function (util, customEqualityTesters) {
+      return {
+        compare: function (actual, expected, tolerance) {
+          var result = {
+            pass: imagediff.equal(actual, expected, tolerance)
+          };
+          if (!result.pass && typeof (document) !== UNDEFINED) {
+            result.message = function() {
+              var
+                div     = get('div'),
+                a       = get('div', '<div>Actual:</div>'),
+                b       = get('div', '<div>Expected:</div>'),
+                c       = get('div', '<div>Diff:</div>'),
+                diff    = imagediff.diff(actual, expected),
+                canvas  = getCanvas(),
+                context;
 
-      if (typeof (document) !== UNDEFINED) {
-        this.message = function () {
-          var
-            div     = get('div'),
-            a       = get('div', '<div>Actual:</div>'),
-            b       = get('div', '<div>Expected:</div>'),
-            c       = get('div', '<div>Diff:</div>'),
-            diff    = imagediff.diff(this.actual, expected),
-            canvas  = getCanvas(),
-            context;
+              canvas.height = diff.height;
+              canvas.width  = diff.width;
 
-          canvas.height = diff.height;
-          canvas.width  = diff.width;
+              div.style.overflow = 'hidden';
+              a.style.float = 'left';
+              b.style.float = 'left';
+              c.style.float = 'left';
 
-          div.style.overflow = 'hidden';
-          a.style.float = 'left';
-          b.style.float = 'left';
-          c.style.float = 'left';
+              context = canvas.getContext('2d');
+              context.putImageData(diff, 0, 0);
 
-          context = canvas.getContext('2d');
-          context.putImageData(diff, 0, 0);
+              a.appendChild(toCanvas(actual));
+              b.appendChild(toCanvas(expected));
+              c.appendChild(canvas);
 
-          a.appendChild(toCanvas(this.actual));
-          b.appendChild(toCanvas(expected));
-          c.appendChild(canvas);
+              div.appendChild(a);
+              div.appendChild(b);
+              div.appendChild(c);
 
-          div.appendChild(a);
-          div.appendChild(b);
-          div.appendChild(c);
-
-          return [
-            div,
-            "Expected not to be equal."
-          ];
-        };
-      }
-
-      return imagediff.equal(this.actual, expected, tolerance);
+              return div;
+            };
+           } else {
+            result.message = result.pass ? 'Expected not to be equal' : 'No DOM detected.';
+          }
+          return result;
+        }
+      };
     }
   };
 
@@ -356,7 +362,6 @@
 
     createCanvas : getCanvas,
     createImageData : getImageData,
-    getCanvasRef: getCanvasRef,
 
     isImage : isImage,
     isCanvas : isCanvas,
